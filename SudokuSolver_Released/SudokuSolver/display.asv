@@ -1,0 +1,7 @@
+function [solution]=display (best_chromosome,sector_size)
+    for i=1: sector_size
+        for j=1:sector_size
+            solution(j,i)=best_chromosome()
+        end
+    end
+end

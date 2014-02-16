@@ -1,0 +1,120 @@
+%{ Program: SudokuSolver
+%  Description: Generates a solved (or at least attempts to generate one to the best of its
+%  ability) a sudoku puzzle using genetic algorithms.
+%  Output: A random solution to a sudoku puzzle
+%}
+
+
+% Clean Workspace To Ensure Quality of Program %
+clear all
+close all
+clc
+
+% Settings %
+population_size=6;          % Size of population (Even Numbers Only) %
+
+maximum_value=9;        % Also the sector(box) size and board length 
+                        % (must be square of i, where i=1,2,3...) %
+                        
+max_generations=50000;          % Maximum number of generations %
+
+p_crossover=0.9;               % Rate of crossover %
+
+p_mutation=0.25;                % Rate of mutation %
+
+
+% Generate Population %
+pop=generatePopulation(population_size,maximum_value);
+
+
+% Evalutate Fitness Values %
+FV=0;                                                   % Get Fitness Vector %
+for i=1: population_size
+    FV=[FV getFitness(pop(:,i))];
+end
+FV= FV(2:end);
+
+[sorted_pop, sorted_FVs]=sortPopulation (pop, FV, population_size);         % Sort population and fitness vector in ascending order (best to worst) %
+
+pop=sorted_pop;                                             % Set sorted population and fitness values %
+FV=sorted_FVs;
+
+FR=getFitnessRatios(FV);                    % Get Fitness Ratios For Selection %
+
+
+
+generations=0;          % Keeps track of generations passed %
+data=[0;0];         % For plotting progress %
+
+% Evolution %
+while (generations<=max_generations)
+    % Plot Progress %
+    new_data=[generations;FV(getMinFV(FV))];    % data(1,:)= generations passed, data(2,:)=current minimum value %
+    data=[data new_data];                               % Concatenate Data %
+    plot(data(1,:),data(2,:),'-');
+    title('Sudoku GA Generations vs Fittest Value');
+    xlabel('Generations');
+    ylabel('Minimum Fitness Value');
+    drawnow
+    
+    
+     % If a solution is found %
+    if (FV(getMinFV(FV))==0)
+       break; 
+    end
+  
+    % Clean the new population and new fitness vector memory location %
+    new_pop=zeros(maximum_value*maximum_value,1);
+    new_FV=[];
+    
+    for i=1:population_size
+        % Selection %
+        [parent1]=selection(pop,FR, population_size);
+        [parent2]=selection(pop,FR, population_size); 
+        
+            
+        % Crossover %
+        if (randomCheck (p_crossover))
+            [child1,child2]=crossover(parent1,parent2);
+        else
+            child1=parent1;
+            child2=parent2;
+        end
+
+        
+        % Mutation %
+        if (randomCheck (p_mutation))
+            [child1]=mutation(child1,maximum_value);
+            [child2]=mutation(child2,maximum_value);
+        end
+              
+        % Place children into new population %
+        new_pop=[new_pop child1 child2];
+        
+       
+    end  
+    new_pop=new_pop(:,2:end);               % Remove concatenated zeros from cleaning memory location %
+    
+    %%%%%%%%%%%
+    % Evaluate Fitness of New Population %
+    new_FV=0;
+    for i=1: length(new_pop(1,:))
+        new_FV=[new_FV getFitness(new_pop(:,i))];
+    end    
+    new_FV= new_FV(2:end);
+       
+    [sorted_pop, sorted_FVs]=sortPopulation (new_pop, new_FV, length(new_pop(1,:)));        % Sort new population and new fitness vector in ascending order (best to worst) %
+    
+    pop=sorted_pop(:,1:population_size);                            % Set sorted population and fitness values. Population is best population_size chromosomes that %
+                                                                    % "survived an unforeseen meteor". %
+    FV=sorted_FVs(1:population_size);   
+    
+    FR=getFitnessRatios(FV);                                 % Get Fitness Ratios For Selection %
+    %%%%%%%%%%%
+     
+    generations=generations +1;                         % Update the generations 
+end
+
+
+
+displaySolution(pop(:,getMinFV(FV)),maximum_value);
